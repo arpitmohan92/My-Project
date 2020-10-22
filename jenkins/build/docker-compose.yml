@@ -4,5 +4,3 @@ services:
     image: "app:$BUILD_TAG"
     build:
       context: .
-    ports:
-      - 80:8080
