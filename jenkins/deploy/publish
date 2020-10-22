@@ -4,14 +4,14 @@ docker rm APP
 
 echo "*** Exporting new environment variables on remote server ***"
 export IMAGE=$(sed -n '1p' /tmp/.auth)
-export TAG=$(sed -n '2p' /tmp/.auth)
+export BUILD_TAG=$(sed -n '2p' /tmp/.auth)
 
 echo "*** Logging into docker hub ***"
 docker login -u amsmzn -p Amsmzn@123
 
 echo "*** Pull the image from docker hub ***"
-docker pull amsmzn/$IMAGE:$TAG
+docker pull amsmzn/$IMAGE:$BUILD_TAG
 
 echo "*** Deploy the application on docker container ***"
-docker run -d --name APP -p 80:8080 amsmzn/$IMAGE:$TAG
+docker run -d --name APP -p 80:8080 amsmzn/$IMAGE:$BUILD_TAG
 
