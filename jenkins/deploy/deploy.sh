@@ -1,7 +1,7 @@
 echo "*** Tranfer enviornment variables ***"
 echo """" > /tmp/.auth
 echo $IMAGE > /tmp/.auth
-echo $BUILD_TAG >> /tmp/.auth
+echo $TAG >> /tmp/.auth
 scp -i /opt/dev /tmp/.auth ec2-user@172.31.34.237:/tmp/ && \
 
 echo "*** Tranfer the support sctipt to remote server ***"
