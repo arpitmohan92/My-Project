@@ -1,6 +1,10 @@
 pipeline {
 
     agent any
+    
+    environment {
+        PASS = credentials('registry-pass') 
+    }
 
     stages {
 
@@ -13,6 +17,11 @@ pipeline {
                 '''
             }
 
+            post {
+                success {
+                   archiveArtifacts artifacts: 'java-app/webapp/target/*.war', fingerprint: true
+                }
+            }
         }
 
         stage('Test') {
@@ -20,6 +29,11 @@ pipeline {
                 sh './jenkins/test/mvn.sh mvn test'
             }
 
+            post {
+                always {
+                    junit 'java-app/server/target/surefire-reports/*.xml'
+                }
+            }
         }
 
         stage('Push') {
@@ -35,3 +49,4 @@ pipeline {
         }
     }
 }
+
