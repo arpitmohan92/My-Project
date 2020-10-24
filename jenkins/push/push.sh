@@ -7,7 +7,7 @@ echo "********************"
 IMAGE="app"
 
 echo "** Logging in ***"
-docker login -u amsmzn -p Amsmzn@123
+docker login -u amsmzn -p $PASS
 echo "*** Tagging image ***"
 docker tag $IMAGE:$BUILD_TAG amsmzn/$IMAGE:$BUILD_TAG
 echo "*** Pushing image ***"

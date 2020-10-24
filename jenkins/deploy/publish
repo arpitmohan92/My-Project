@@ -7,7 +7,7 @@ export IMAGE=$(sed -n '1p' /tmp/.auth)
 export TAG=$(sed -n '2p' /tmp/.auth)
 
 echo "*** Logging into docker hub ***"
-docker login -u amsmzn -p Amsmzn@123
+docker login -u amsmzn -p $PASS
 
 echo "*** Deploy the application on docker container ***"
 cd ~/maven && docker-compose up -d
