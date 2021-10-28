@@ -1,24 +1,2 @@
 jenkins:
   systemMessage: "Welcome to your Jenkins instance"
-# JcasC configuration for unclassified plugins
-unclassified:
-  # URL under which the Jenkins is reachable.
-  # This URL will also be used for notifying the VCS like Github or Bitbucket to link to build number results.
-  location:
-    url: "http://your-jenkins.com/jenkins"
-# Definition of a global pipeline library
-  globalLibraries:
-    libraries:
-      - defaultVersion: "master"
-        name: "my-pipeline-library"
-        implicit: false
-        allowVersionOverride: true
-        includeInChangesets: false
-        retriever:
-          modernSCM:
-            scm:
-              git:
-                id: "my-pipeline-library"
-                remote: "https://github.com/Ragin-LundF/k8s-jcasc-pipeline-library.git"
-                credentialsId: "mycredentials"
-                
