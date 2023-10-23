@@ -1,4 +1,4 @@
-#Define any gloabl variables here
+// Define any gloabl variables here
 
 def projectname = "jenkins"
 
