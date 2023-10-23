@@ -3,11 +3,11 @@
 def projectname = "jenkins"
 
 void getVariablesInitialised() {
-    if ("master".equals(env.GIT_BRANCH)) {
+    if ("origin/master".equals(env.GIT_BRANCH)) {
         environment = "production"
-    } else if ("dev".equals(env.GIT_BRANCH)) {
+    } else if ("origin/dev".equals(env.GIT_BRANCH)) {
         environment = "dev"
-    } else if ("qa".equals(env.GIT_BRANCH)) {
+    } else if ("origin/qa".equals(env.GIT_BRANCH)) {
         environment = "qa"
     } 
 }
@@ -50,7 +50,7 @@ pipeline {
                     steps {
                         script {
                             sh """
-                                date
+                                echo "This is test"
                             """
                         }
                     }
