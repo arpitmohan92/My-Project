@@ -12,15 +12,15 @@ void getVariablesInitialised() {
 
 pipeline {
     agent any
-    stages {
-        stage("Prechecks") {
-            when {
-                anyOf {
-                    expression{env.BRANCH_NAME == 'master'}
-                    expression{env.BRANCH_NAME == 'dev'}
-                    expression{env.BRANCH_NAME == 'qa'}
-                }
-            }
+//    stages {
+//        stage("Prechecks") {
+//            when {
+//                anyOf {
+//                    expression{env.BRANCH_NAME == 'master'}
+//                    expression{env.BRANCH_NAME == 'dev'}
+//                    expression{env.BRANCH_NAME == 'qa'}
+//                }
+//            }
             stages {
                 stage("Prep") {
                     steps {
@@ -39,7 +39,7 @@ pipeline {
                     steps {
                         script {
                             sh """
-                                echo ${environment}
+                                env
                             """
                         }
                     }
