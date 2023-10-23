@@ -1,52 +1,76 @@
+#Define any gloabl variables here
+
+def projectname = "jenkins"
+
+void getVariablesInitialised() {
+    if ("master".equals(env.GIT_BRANCH)) {
+        environment = "production"
+    } else if ("dev".equals(env.GIT_BRANCH)) {
+        environment = "dev"
+    } else if ("qa".equals(env.GIT_BRANCH)) {
+        environment = "qa"
+    } 
+}
+
 pipeline {
-
     agent any
-    
-    environment {
-        PASS = credentials('registry-pass') 
-    }
-
     stages {
-
-        stage('Build') {
-            steps {
-                sh '''
-                    ./jenkins/build/mvn.sh mvn -B -DskipTests clean package
-                    ./jenkins/build/build.sh
-
-                '''
-            }
-
-            post {
-                success {
-                   archiveArtifacts artifacts: 'java-app/webapp/target/*.war', fingerprint: true
+        stage("Prechecks") {
+            when {
+                anyOf {
+                    expression{env.BRANCH_NAME == 'master'}
+                    expression{env.BRANCH_NAME == 'dev'}
+                    expression{env.BRANCH_NAME == 'qa'}
                 }
             }
-        }
-
-        stage('Test') {
-            steps {
-                sh './jenkins/test/mvn.sh mvn test'
-            }
-
-            post {
-                always {
-                    junit 'java-app/server/target/surefire-reports/*.xml'
+            stages {
+                stage("Prep") {
+                    steps {
+                        script {
+                            echo "Executing Prep"
+                        }
+                        getVariablesInitialised()
+                    }
                 }
+                stage("Checkout") {
+                    steps {
+                        checkout scm
+                    }
+                }
+                stage("Build") {
+                    steps {
+                        script {
+                            sh """
+                                echo ${environment}
+                            """
+                        }
+                    }
+                }
+                stage("Test") {
+                    steps {
+                        script {
+                            sh """
+                                echo ${environment}
+                            """
+                        }
+                    }
+               stage("Deploy") {
+                    steps {
+                        script {
+                            sh """
+                                echo ${environment}
+                            """
+                        }
+                    }
+                }
+
             }
         }
-
-        stage('Push') {
-            steps {
-                sh './jenkins/push/push.sh'
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                sh './jenkins/deploy/deploy.sh'
-            }
+    }
+    post {
+        always {
+            echo "Cleaning workspace ${env.WORKSPACE}"
+            cleanWs()
         }
     }
 }
-
