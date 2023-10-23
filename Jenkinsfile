@@ -41,7 +41,7 @@ pipeline {
                     steps {
                         script {
                             sh """
-                                env
+                                echo ${environment}
                             """
                         }
                     }
@@ -50,7 +50,7 @@ pipeline {
                     steps {
                         script {
                             sh """
-                                echo "This is test"
+                                echo ${environment}
                             """
                         }
                     }
