@@ -18,9 +18,9 @@ pipeline {
         stage("Prechecks") {
             when {
                 anyOf {
-                    expression{env.BRANCH_NAME == 'origin/master'}
-                    expression{env.BRANCH_NAME == 'origin/dev'}
-                    expression{env.BRANCH_NAME == 'origin/qa'}
+                    expression{env.GIT_BRANCH == 'origin/master'}
+                    expression{env.GIT_BRANCH == 'origin/dev'}
+                    expression{env.GIT_BRANCH == 'origin/qa'}
                 }
             }
             stages {
