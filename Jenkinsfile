@@ -59,10 +59,4 @@ pipeline {
             }
         }
 //    }
-    post {
-        always {
-            echo "Cleaning workspace ${env.WORKSPACE}"
-            cleanWs()
-        }
-    }
 //}
