@@ -28,7 +28,6 @@ pipeline {
                     steps {
                         script {
                             echo "Executing Prep"
-                            env
                         }
                         getVariablesInitialised()
                     }
@@ -42,7 +41,7 @@ pipeline {
                     steps {
                         script {
                             sh """
-                                echo ${environment}
+                                env
                             """
                         }
                     }
@@ -51,7 +50,7 @@ pipeline {
                     steps {
                         script {
                             sh """
-                                echo ${environment}
+                                date
                             """
                         }
                     }
