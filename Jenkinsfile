@@ -1,5 +1,3 @@
-#Define any gloabl variables here
-
 def projectname = "jenkins"
 
 void getVariablesInitialised() {
