@@ -44,14 +44,6 @@ pipeline {
                         }
                     }
                 }
-                stage("Test") {
-                    steps {
-                        script {
-                            sh """
-                                echo ${environment}
-                            """
-                        }
-                    }
                stage("Deploy") {
                     steps {
                         script {
@@ -71,5 +63,4 @@ pipeline {
             cleanWs()
         }
     }
-}
 }
