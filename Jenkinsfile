@@ -1,3 +1,5 @@
+#Define any gloabl variables here
+
 def projectname = "jenkins"
 
 void getVariablesInitialised() {
@@ -16,17 +18,17 @@ pipeline {
         stage("Prechecks") {
             when {
                 anyOf {
-                    expression{env.GIT_BRANCH == 'master'}
-                    expression{env.GIT_BRANCH == 'dev'}
-                    expression{env.GIT_BRANCH == 'qa'}
+                    expression{env.BRANCH_NAME == 'master'}
+                    expression{env.BRANCH_NAME == 'dev'}
+                    expression{env.BRANCH_NAME == 'qa'}
                 }
             }
-          }
             stages {
                 stage("Prep") {
                     steps {
                         script {
                             echo "Executing Prep"
+                            env
                         }
                         getVariablesInitialised()
                     }
@@ -40,11 +42,19 @@ pipeline {
                     steps {
                         script {
                             sh """
-                                env
+                                echo ${environment}
                             """
                         }
                     }
                 }
+                stage("Test") {
+                    steps {
+                        script {
+                            sh """
+                                echo ${environment}
+                            """
+                        }
+                    }
                stage("Deploy") {
                     steps {
                         script {
@@ -63,4 +73,6 @@ pipeline {
             echo "Cleaning workspace ${env.WORKSPACE}"
             cleanWs()
         }
-   }
+    }
+}
+}    
