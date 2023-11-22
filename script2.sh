@@ -7,7 +7,7 @@ output_file="zero_target_lb_names.txt"
 load_balancers=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[*].[LoadBalancerArn,LoadBalancerName]' --output json --profile common-dev)
 
 # Loop through each load balancer and check if it has any target groups with zero target instances
-while IFS= read -r lb_info; do
+for lb_info in $(echo "$load_balancers" | jq -c '.[]'); do
     lb_arn=$(echo "$lb_info" | jq -r '.[0]')
     lb_name=$(echo "$lb_info" | jq -r '.[1]')
 
@@ -35,7 +35,6 @@ while IFS= read -r lb_info; do
     if [ "$has_zero_targets" = true ]; then
         echo "$lb_name" >> "$output_file"
     fi
-done <<< "$(echo "$load_balancers" | jq -c '.[]')"
+done
 
 echo "Load balancer names with zero target instances have been written to $output_file"
-
