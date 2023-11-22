@@ -1,2 +1,27 @@
+#!/bin/bash
 
-sudo git push -u origin master
+# Get a list of load balancer ARNs and names
+load_balancers=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[*].[LoadBalancerArn,LoadBalancerName]' --output json --profile common-dev)
+
+# Loop through each load balancer and check if it has zero target instances
+for lb_info in $(echo "$load_balancers" | jq -c '.[]'); do
+    lb_arn=$(echo "$lb_info" | jq -r '.[0]')
+    lb_name=$(echo "$lb_info" | jq -r '.[1]')
+
+    # Get the target group ARNs for the load balancer
+    target_group_arns=$(aws elbv2 describe-target-groups --load-balancer-arn $lb_arn --query 'TargetGroups[*].TargetGroupArn' --output json --profile common-dev)
+
+    # Loop through each target group and check target health
+    for target_group_arn in $(echo "$target_group_arns" | jq -r '.[]'); do
+        target_count=$(aws elbv2 describe-target-health --target-group-arn $target_group_arn --query 'TargetHealthDescriptions[?TargetHealth.State==`healthy`].length(@)' --output json --profile common-dev)
+
+        # Check if target_count is an integer
+        if [[ "$target_count" =~ ^[0-9]+$ ]]; then
+            if [ "$target_count" -eq 0 ]; then
+                echo "Load Balancer '$lb_name' with ARN $lb_arn and Target Group ARN $target_group_arn has zero target instances."
+            fi
+        else
+            echo "Error: Unable to retrieve target count for Load Balancer '$lb_name' with ARN $lb_arn and Target Group ARN $target_group_arn."
+        fi
+    done
+done
