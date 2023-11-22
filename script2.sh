@@ -17,7 +17,7 @@ for lb_info in $(echo "$load_balancers" | jq -c '.[]'); do
     # Loop through each target group and check target health
     for target_group_arn in $(echo "$target_group_arns" | jq -r '.[]'); do
         # Validate that the string appears to be a valid ARN
-        if [[ "$target_group_arn" =~ ^arn:aws:elasticloadbalancing:[^:]+:targetgroup/[^/]+$ ]]; then
+        if [[ "$target_group_arn" =~ ^arn:aws:elasticloadbalancing:[^:]+:targetgroup/[^[:space:]]+$ ]]; then
             target_count=$(aws elbv2 describe-target-health --target-group-arn $target_group_arn --query 'TargetHealthDescriptions[?TargetHealth.State==`healthy`].length(@)' --output json --profile common-dev)
 
             # Check if target_count is an integer
