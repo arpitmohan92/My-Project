@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Output file for load balancer names with zero target instances
+output_file="zero_target_lb_names.txt"
+
 # Get a list of load balancer ARNs and names
 load_balancers=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[*].[LoadBalancerArn,LoadBalancerName]' --output json --profile common-dev)
 
@@ -18,10 +21,12 @@ for lb_info in $(echo "$load_balancers" | jq -c '.[]'); do
         # Check if target_count is an integer
         if [[ "$target_count" =~ ^[0-9]+$ ]]; then
             if [ "$target_count" -eq 0 ]; then
-                echo "Load Balancer '$lb_name' with ARN $lb_arn and Target Group ARN $target_group_arn has zero target instances."
+                echo "$lb_name" >> "$output_file"
             fi
         else
-            echo "Error: Unable to retrieve target count for Load Balancer '$lb_name' with ARN $lb_arn and Target Group ARN $target_group_arn."
+            echo "Error: Unable to retrieve target count for Load Balancer '$lb_name' with ARN $lb_arn and Target Group ARN $target_group_arn." >&2
         fi
     done
 done
+
+echo "Load balancer names with zero target instances have been written to $output_file"
