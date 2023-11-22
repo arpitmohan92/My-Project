@@ -19,7 +19,10 @@ while IFS= read -r lb_info; do
 
     # Loop through each target group and check instance count
     while IFS= read -r target_group_arn; do
-        instance_count=$(aws elbv2 describe-target-health --target-group-arn "$target_group_arn" --query 'length(TargetHealthDescriptions)' --output json --profile common-dev)
+        # Remove leading and trailing whitespaces and unexpected characters
+        cleaned_target_group_arn=$(echo "$target_group_arn" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+
+        instance_count=$(aws elbv2 describe-target-health --target-group-arn "$cleaned_target_group_arn" --query 'length(TargetHealthDescriptions)' --output json --profile common-dev)
 
         # Check if instance_count is an integer
         if [[ "$instance_count" =~ ^[0-9]+$ ]]; then
@@ -28,7 +31,7 @@ while IFS= read -r lb_info; do
                 break  # Exit the loop if any target group has non-zero instances
             fi
         else
-            echo "Error: Unable to retrieve instance count for Load Balancer '$lb_name' with ARN $lb_arn and Target Group ARN $target_group_arn." >&2
+            echo "Error: Unable to retrieve instance count for Load Balancer '$lb_name' with ARN $lb_arn and Target Group ARN $cleaned_target_group_arn." >&2
         fi
     done <<< "$(echo "$target_group_arns" | jq -c -r '.[]')"
 
