@@ -1,29 +1,18 @@
 #!/bin/bash
 
-# Specify your AWS region
-AWS_REGION="your-region"
+# Get a list of RDS instances
+rds_instances=$(aws rds describe-db-instances --query 'DBInstances[*].[DBInstanceIdentifier]' --output text)
 
-# Specify your AWS CLI profile
-AWS_PROFILE="common-dev"
+# Iterate through each RDS instance
+for instance in $rds_instances
+do
+    # Get the number of database connections for the last hour
+    connections=$(aws cloudwatch get-metric-statistics --namespace AWS/RDS --metric-name DatabaseConnections --start-time "$(date -u -d '1 hour ago' '+%Y-%m-%dT%H:%M:%SZ')" --end-time "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" --period 3600 --statistics Sum --dimensions Name=DBInstanceIdentifier,Value="$instance" --query 'Datapoints[0].Sum' --output text)
 
-# Get a list of all RDS instances
-all_rds_instances=$(aws rds describe-db-instances --region $AWS_REGION --profile $AWS_PROFILE --query 'DBInstances[*].[DBInstanceIdentifier, DBClusterIdentifier, CurrentConnections]' --output table)
-
-# Initialize an array to store RDS instances with zero connections
-zero_connections_rds=()
-
-# Loop through each RDS instance
-while read -r rds_instance; do
-    # Extract the number of current connections
-    current_connections=$(echo $rds_instance | awk '{print $NF}')
-
-    # Check if the number of connections is zero
-    if [ "$current_connections" -eq 0 ]; then
-        zero_connections_rds+=("$rds_instance")
+    # Check if there are any database connections
+    if [ "$connections" -gt 0 ]; then
+        echo "RDS instance $instance is connected to an application."
+    else
+        echo "RDS instance $instance has no active connections."
     fi
-done <<< "$all_rds_instances"
-
-# Save the RDS instances with zero connections to a file
-echo "${zero_connections_rds[@]}" > zero_connections_rds.txt
-
-echo "RDS instances with zero connections have been recorded in zero_connections_rds.txt"
+done
