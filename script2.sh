@@ -1,18 +1,31 @@
 #!/bin/bash
 
-# Get a list of RDS instances
-rds_instances=$(aws rds describe-db-instances --query 'DBInstances[*].[DBInstanceIdentifier]' --output text)
+# Get all EC2 Security Group IDs
+security_group_ids=($(aws ec2 describe-security-groups --query 'SecurityGroups[*].GroupId' --output text))
 
-# Iterate through each RDS instance
-for instance in $rds_instances
+# Initialize an array to store unused security groups
+unused_security_groups=()
+
+# Loop through each Security Group ID
+for security_group_id in "${security_group_ids[@]}"
 do
-    # Get the number of database connections for the last hour
-    connections=$(aws cloudwatch get-metric-statistics --namespace AWS/RDS --metric-name DatabaseConnections --start-time "$(date -u -d '1 hour ago' '+%Y-%m-%dT%H:%M:%SZ')" --end-time "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" --period 3600 --statistics Sum --dimensions Name=DBInstanceIdentifier,Value="$instance" --query 'Datapoints[0].Sum' --output text)
+    # Find the number of network interfaces associated with the Security Group
+    num_network_interfaces=$(aws ec2 describe-network-interfaces \
+        --filters "Name=group-id,Values=$security_group_id" \
+        --query 'length(NetworkInterfaces)' \
+        --output text)
 
-    # Check if there are any database connections
-    if [ "$connections" -gt 0 ]; then
-        echo "RDS instance $instance is connected to an application."
-    else
-        echo "RDS instance $instance has no active connections."
+    # Check if the Security Group is not in use
+    if [ "$num_network_interfaces" -eq 0 ]; then
+        # Get the name of the Security Group and add it to the array
+        security_group_name=$(aws ec2 describe-security-groups --group-ids "$security_group_id" --query 'SecurityGroups[0].GroupName' --output text)
+        unused_security_groups+=("$security_group_name")
     fi
+done
+
+# Print the names of unused security groups
+echo "Unused Security Groups:"
+for unused_group in "${unused_security_groups[@]}"
+do
+    echo "- $unused_group"
 done
