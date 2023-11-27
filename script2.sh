@@ -1,31 +1,16 @@
 #!/bin/bash
 
-# Get all EC2 Security Group IDs
-security_group_ids=($(aws ec2 describe-security-groups --query 'SecurityGroups[*].GroupId' --output text))
+# Get a list of ECS clusters
+ecs_clusters=$(aws ecs list-clusters --output json | jq -r '.clusterArns[]')
 
-# Initialize an array to store unused security groups
-unused_security_groups=()
+# Loop through each ECS cluster
+for cluster in $ecs_clusters; do
+    # Get the number of running tasks in the cluster
+    running_tasks=$(aws ecs list-tasks --cluster $cluster --desired-status RUNNING --output json | jq -r '.taskArns | length')
 
-# Loop through each Security Group ID
-for security_group_id in "${security_group_ids[@]}"
-do
-    # Find the number of network interfaces associated with the Security Group
-    num_network_interfaces=$(aws ec2 describe-network-interfaces \
-        --filters "Name=group-id,Values=$security_group_id" \
-        --query 'length(NetworkInterfaces)' \
-        --output text)
-
-    # Check if the Security Group is not in use
-    if [ "$num_network_interfaces" -eq 0 ]; then
-        # Get the name of the Security Group and add it to the array
-        security_group_name=$(aws ec2 describe-security-groups --group-ids "$security_group_id" --query 'SecurityGroups[0].GroupName' --output text)
-        unused_security_groups+=("$security_group_name")
+    # If no running tasks, consider the cluster not in use
+    if [ $running_tasks -eq 0 ]; then
+        echo "ECS Cluster $cluster is not in use"
+        # You can add additional actions here, such as recording the cluster name to a file or notifying someone.
     fi
-done
-
-# Print the names of unused security groups
-echo "Unused Security Groups:"
-for unused_group in "${unused_security_groups[@]}"
-do
-    echo "- $unused_group"
 done
