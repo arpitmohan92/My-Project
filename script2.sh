@@ -1,16 +1,14 @@
 #!/bin/bash
 
-# Get a list of ECS clusters
-ecs_clusters=$(aws ecs list-clusters --output json | jq -r '.clusterArns[]')
+# Get a list of all Elastic IPs
+all_ips=$(aws ec2 describe-addresses --query 'Addresses[*].PublicIp' --output text)
 
-# Loop through each ECS cluster
-for cluster in $ecs_clusters; do
-    # Get the number of running tasks in the cluster
-    running_tasks=$(aws ecs list-tasks --cluster $cluster --desired-status RUNNING --output json | jq -r '.taskArns | length')
-
-    # If no running tasks, consider the cluster not in use
-    if [ $running_tasks -eq 0 ]; then
-        echo "ECS Cluster $cluster is not in use"
-        # You can add additional actions here, such as recording the cluster name to a file or notifying someone.
+# Iterate through each Elastic IP
+for ip in $all_ips; do
+    # Check if the Elastic IP is associated with any resource
+    association=$(aws ec2 describe-addresses --public-ips $ip --query 'Addresses[*].AssociationId' --output text)
+    
+    if [ -z "$association" ]; then
+        echo "Unattached Elastic IP: $ip"
     fi
 done
