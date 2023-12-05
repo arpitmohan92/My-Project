@@ -1,7 +1,16 @@
 import boto3
 from datetime import datetime
+from decimal import Decimal
 
 ecs_client = boto3.client('ecs')
+
+def custom_serializer(obj):
+    if isinstance(obj, Decimal):
+        return float(obj)
+    elif isinstance(obj, datetime):
+        return obj.isoformat()
+    else:
+        raise TypeError("Object of type {} is not JSON serializable".format(type(obj)))
 
 def lambda_handler(event, context):
     try:
@@ -14,8 +23,8 @@ def lambda_handler(event, context):
         # Convert datetime object to string before returning
         response['timestamp'] = str(datetime.now())
 
-        # Serialize the response using boto3's json_util
-        response_serializable = ecs_client.meta.events._json_handler(response, None)
+        # Serialize the response using custom serializer
+        response_serializable = custom_serializer(response)
         
         return response_serializable
 
