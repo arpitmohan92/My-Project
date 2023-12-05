@@ -1,9 +1,16 @@
 import boto3
+from datetime import datetime
 
 ecs_client = boto3.client('ecs')
 
-lambda_handler = lambda event, context: ecs_client.update_service(
-    cluster='dev',
-    service='apps-checkin',
-    forceNewDeployment=True
-)
+def lambda_handler(event, context):
+    response = ecs_client.update_service(
+        cluster='dev',
+        service='apps-checkin',
+        forceNewDeployment=True
+    )
+
+    # Convert datetime object to string before returning
+    response['timestamp'] = datetime.now().isoformat()
+
+    return response
