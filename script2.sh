@@ -15,8 +15,8 @@ def lambda_handler(event, context):
         # Convert datetime object to string before returning
         response['timestamp'] = str(datetime.now())
         
-        # Ensure all elements are serializable
-        response_serializable = json.loads(json.dumps(response, default=str))
+        # Serialize the response using json.dumps
+        response_serializable = json.dumps(response, default=str)
         
         return response_serializable
 
