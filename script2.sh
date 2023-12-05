@@ -1,20 +1,31 @@
 import boto3
 
 def lambda_handler(event, context):
-    # Create ECS client
-    ecs_client = boto3.client('ecs')
+    # Create EC2 client
+    ec2_client = boto3.client('ec2')
 
-    # List ECS clusters
-    response = ecs_client.list_clusters()
+    # List EC2 instances
+    response = ec2_client.describe_instances()
 
-    if 'clusterArns' in response and response['clusterArns']:
-        clusters = response['clusterArns']
+    instances = []
+    
+    # Extract instance information from the response
+    for reservation in response['Reservations']:
+        for instance in reservation['Instances']:
+            instances.append({
+                'InstanceId': instance['InstanceId'],
+                'InstanceType': instance['InstanceType'],
+                'State': instance['State']['Name']
+            })
+
+    if instances:
         return {
             'statusCode': 200,
-            'body': f'ECS Clusters: {clusters}'
+            'body': f'EC2 Instances: {instances}'
         }
     else:
         return {
             'statusCode': 404,
-            'body': 'No ECS clusters found.'
+            'body': 'No EC2 instances found.'
         }
+
