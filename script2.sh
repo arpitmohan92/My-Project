@@ -1,5 +1,4 @@
 import boto3
-import json  # Import the json module
 from datetime import datetime
 
 ecs_client = boto3.client('ecs')
@@ -14,11 +13,8 @@ def lambda_handler(event, context):
 
         # Convert datetime object to string before returning
         response['timestamp'] = str(datetime.now())
-
-        # Ensure all elements are serializable
-        response_serializable = json.dumps(response, default=str)
         
-        return response_serializable
+        return response
 
     except Exception as e:
         return str(e)
