@@ -11,6 +11,6 @@ def lambda_handler(event, context):
     )
 
     # Convert datetime object to string before returning
-    response['timestamp'] = datetime.now().isoformat()
+    response['timestamp'] = str(datetime.now())
 
     return response
