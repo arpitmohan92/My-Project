@@ -1,17 +1,52 @@
-Presentation Tier (Web Tier):
-This tier is responsible for interacting with users and presenting the user interface.
-It often involves a web server, which could be an EC2 instance running a web server software like Apache or Nginx.
-In a VPC diagram, this tier might reside in a public subnet, allowing direct access from the internet.
-Application Tier (Logic Tier):
-The application tier processes business logic and executes the core functionality of the application.
-It can include multiple servers or instances running application code, which could be hosted on EC2 instances or within containers managed by AWS ECS (Elastic Container Service).
-In a VPC diagram, this tier might reside in a private subnet, limiting direct external access and enhancing security.
-Data Tier (Database Tier):
-The data tier stores and manages the application's data.
-It often involves a database server, which could be an Amazon RDS instance for a relational database or an Amazon DynamoDB table for a NoSQL database.
-In a VPC diagram, this tier might also reside in a private subnet to restrict direct access and enhance security.
-VPC Configuration:
+provider "aws" {
+  region = "your-region"
+}
 
-The entire architecture operates within an AWS Virtual Private Cloud (VPC), providing network isolation and control.
-Subnets are used to organize resources. Public subnets may contain resources that need direct internet access, while private subnets house resources that should not be directly accessible from the internet.
-Security Groups and Network ACLs are configured to control inbound and outbound traffic between different tiers. For example, only allowing necessary traffic from the web tier to the application tier.
+# Create an ECS Task Restart Lambda Function
+resource "aws_lambda_function" "ecs_restart_lambda" {
+  filename      = "ecs_restart.zip"  # Path to your Lambda deployment package
+  function_name = "ecsRestartFunction"
+  handler       = "ecs_restart.sh"   # Name of your script
+  runtime       = "provided"
+  role          = aws_iam_role.lambda_execution_role.arn
+}
+
+# Create an IAM role for Lambda execution
+resource "aws_iam_role" "lambda_execution_role" {
+  name = "lambda_execution_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action = "sts:AssumeRole",
+      Effect = "Allow",
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+    }]
+  })
+}
+
+# Attach necessary policies to Lambda execution role
+resource "aws_iam_role_policy_attachment" "lambda_execution_policy_attachment" {
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  role       = aws_iam_role.lambda_execution_role.name
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_execution_policy_attachment" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonECS_FullAccess"
+  role       = aws_iam_role.lambda_execution_role.name
+}
+
+# Create CloudWatch Events Rule
+resource "aws_cloudwatch_event_rule" "ecs_restart_rule" {
+  name                = "ECSRestartRule"
+  schedule_expression = "cron(0 0 * * ? *)"  # Example: daily at midnight UTC
+}
+
+# Add Lambda function as a target for the CloudWatch Events Rule
+resource "aws_cloudwatch_event_target" "ecs_restart_target" {
+  rule      = aws_cloudwatch_event_rule.ecs_restart_rule.name
+  target_id = "ecsRestartTarget"
+  arn       = aws_lambda_function.ecs_restart_lambda.arn
+}
