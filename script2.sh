@@ -1,4 +1,5 @@
 import boto3
+import json  # Import the json module
 from datetime import datetime
 
 ecs_client = boto3.client('ecs')
