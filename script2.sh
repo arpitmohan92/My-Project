@@ -1,25 +1,27 @@
 #!/bin/bash
 
 # Get a list of all Elastic IPs
-elastic_ips=$(aws ec2 describe-addresses --query 'Addresses[*].[AllocationId, AssociationId]' --output text)
+elastic_ips=$(aws ec2 describe-addresses --query 'Addresses[].[AllocationId,InstanceId]' --output json)
 
-# Create an array to store unassociated Elastic IPs
-unassociated_ips=()
+# Initialize arrays to store unassociated EIPs in JSON and plain text format
+unassociated_eips_json=()
+unassociated_eips_plain=()
 
-# Loop through each Elastic IP and check if it's associated
-while read -r allocation_id association_id; do
-    if [ -z "$association_id" ]; then
-        unassociated_ips+=("$allocation_id")
+# Loop through each Elastic IP
+while IFS= read -r eip_info; do
+    allocation_id=$(echo "$eip_info" | jq -r '.[0]')
+    instance_id=$(echo "$eip_info" | jq -r '.[1]')
+
+    # Check if Elastic IP is unassociated
+    if [ "$instance_id" == "null" ]; then
+        unassociated_eips_json+=("{\"AllocationId\": \"$allocation_id\"}")
+        unassociated_eips_plain+=("$allocation_id")
     fi
 done <<< "$elastic_ips"
 
-# Write unassociated Elastic IPs to a file
-if [ ${#unassociated_ips[@]} -gt 0 ]; then
-    echo "Unassociated Elastic IPs:" > unassociated_ips.txt
-    for allocation_id in "${unassociated_ips[@]}"; do
-        echo "$allocation_id" >> unassociated_ips.txt
-    done
-    echo "List of unassociated Elastic IPs written to unassociated_ips.txt"
-else
-    echo "No unassociated Elastic IPs found."
-fi
+# Save results to files
+echo "${unassociated_eips_json[@]}" > unassociated_eips.json
+echo "${unassociated_eips_plain[@]}" > unassociated_eips.txt
+
+echo "Unassociated Elastic IPs:"
+cat unassociated_eips_plain.txt
