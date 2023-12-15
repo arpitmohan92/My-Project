@@ -1,14 +1,25 @@
 #!/bin/bash
 
-# Get a list of all Lambda functions
-lambda_functions=$(aws lambda list-functions --query 'Functions[*].FunctionName' --output text)
+# Get a list of all Elastic IPs
+elastic_ips=$(aws ec2 describe-addresses --query 'Addresses[*].[AllocationId, AssociationId]' --output text)
 
-# Loop through each function and check if it has any event source mappings
-for function_name in $lambda_functions; do
-    event_sources=$(aws lambda list-event-source-mappings --function-name $function_name --query 'EventSourceMappings' --output text)
-    
-    # If the function has no event sources, consider it as potentially unused
-    if [ -z "$event_sources" ]; then
-        echo "Unused Lambda function: $function_name"
+# Create an array to store unassociated Elastic IPs
+unassociated_ips=()
+
+# Loop through each Elastic IP and check if it's associated
+while read -r allocation_id association_id; do
+    if [ -z "$association_id" ]; then
+        unassociated_ips+=("$allocation_id")
     fi
-done
+done <<< "$elastic_ips"
+
+# Write unassociated Elastic IPs to a file
+if [ ${#unassociated_ips[@]} -gt 0 ]; then
+    echo "Unassociated Elastic IPs:" > unassociated_ips.txt
+    for allocation_id in "${unassociated_ips[@]}"; do
+        echo "$allocation_id" >> unassociated_ips.txt
+    done
+    echo "List of unassociated Elastic IPs written to unassociated_ips.txt"
+else
+    echo "No unassociated Elastic IPs found."
+fi
