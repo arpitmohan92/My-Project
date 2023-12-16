@@ -1,27 +1,30 @@
 #!/bin/bash
 
-# Get a list of all Elastic IPs
-elastic_ips=$(aws ec2 describe-addresses --query 'Addresses[].[AllocationId,InstanceId]' --output json)
+# Set AWS CLI profile and region
+AWS_PROFILE="your_aws_profile"
+AWS_REGION="your_aws_region"
 
-# Initialize arrays to store unassociated EIPs in JSON and plain text format
-unassociated_eips_json=()
-unassociated_eips_plain=()
+# Set the output file path
+OUTPUT_FILE="inactive_lambda_functions.txt"
 
-# Loop through each Elastic IP
-while IFS= read -r eip_info; do
-    allocation_id=$(echo "$eip_info" | jq -r '.[0]')
-    instance_id=$(echo "$eip_info" | jq -r '.[1]')
+# Get current date
+CURRENT_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-    # Check if Elastic IP is unassociated
-    if [ "$instance_id" == "null" ]; then
-        unassociated_eips_json+=("{\"AllocationId\": \"$allocation_id\"}")
-        unassociated_eips_plain+=("$allocation_id")
+# Calculate the date 3 months ago
+THREE_MONTHS_AGO=$(date -u -d '3 months ago' +"%Y-%m-%dT%H:%M:%SZ")
+
+# List all Lambda functions
+FUNCTIONS=$(aws lambda list-functions --profile $AWS_PROFILE --region $AWS_REGION --output json)
+
+# Check each function's last invocation time
+for row in $(echo "${FUNCTIONS}" | jq -c '.Functions[]'); do
+    FUNCTION_NAME=$(echo "${row}" | jq -r '.FunctionName')
+    LAST_INVOCATION=$(aws lambda list-invocations --function-name $FUNCTION_NAME --profile $AWS_PROFILE --region $AWS_REGION --max-items 1 --output json | jq -r '.Invocations[0].InvocationTime')
+
+    # If last invocation is earlier than three months ago, record the function
+    if [[ "$LAST_INVOCATION" < "$THREE_MONTHS_AGO" || -z "$LAST_INVOCATION" ]]; then
+        echo "$FUNCTION_NAME" >> "$OUTPUT_FILE"
     fi
-done <<< "$elastic_ips"
+done
 
-# Save results to files
-echo "${unassociated_eips_json[@]}" > unassociated_eips.json
-echo "${unassociated_eips_plain[@]}" > unassociated_eips.txt
-
-echo "Unassociated Elastic IPs:"
-cat unassociated_eips_plain.txt
+echo "Inactive Lambda functions recorded in $OUTPUT_FILE"
