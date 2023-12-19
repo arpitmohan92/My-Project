@@ -1,30 +1,49 @@
 #!/bin/bash
 
-# Set AWS CLI profile and region
+# Set your AWS CLI profile and region
 AWS_PROFILE="your_aws_profile"
 AWS_REGION="your_aws_region"
 
-# Set the output file path
-OUTPUT_FILE="inactive_lambda_functions.txt"
+# Get VPC ID
+VPC_ID="your_vpc_id"
 
-# Get current date
-CURRENT_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+# Check if VPC exists
+aws ec2 describe-vpcs --vpc-ids "$VPC_ID" --profile "$AWS_PROFILE" --region "$AWS_REGION" > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "VPC with ID $VPC_ID does not exist or there was an issue retrieving information."
+    exit 1
+fi
 
-# Calculate the date 3 months ago
-THREE_MONTHS_AGO=$(date -u -d '3 months ago' +"%Y-%m-%dT%H:%M:%SZ")
+# Check Subnet usage
+SUBNETS=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" --profile "$AWS_PROFILE" --region "$AWS_REGION" --output json | jq -r '.Subnets | length')
+if [ "$SUBNETS" -eq 0 ]; then
+    echo "No subnets found for VPC $VPC_ID."
+else
+    echo "Subnets found: $SUBNETS"
+fi
 
-# List all Lambda functions
-FUNCTIONS=$(aws lambda list-functions --profile $AWS_PROFILE --region $AWS_REGION --output json)
+# Check Security Group usage
+SECURITY_GROUPS=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$VPC_ID" --profile "$AWS_PROFILE" --region "$AWS_REGION" --output json | jq -r '.SecurityGroups | length')
+if [ "$SECURITY_GROUPS" -eq 0 ]; then
+    echo "No security groups found for VPC $VPC_ID."
+else
+    echo "Security groups found: $SECURITY_GROUPS"
+fi
 
-# Check each function's last invocation time
-for row in $(echo "${FUNCTIONS}" | jq -c '.Functions[]'); do
-    FUNCTION_NAME=$(echo "${row}" | jq -r '.FunctionName')
-    LAST_INVOCATION=$(aws lambda list-invocations --function-name $FUNCTION_NAME --profile $AWS_PROFILE --region $AWS_REGION --max-items 1 --output json | jq -r '.Invocations[0].InvocationTime')
+# Check Route Table usage
+ROUTE_TABLES=$(aws ec2 describe-route-tables --filters "Name=vpc-id,Values=$VPC_ID" --profile "$AWS_PROFILE" --region "$AWS_REGION" --output json | jq -r '.RouteTables | length')
+if [ "$ROUTE_TABLES" -eq 0 ]; then
+    echo "No route tables found for VPC $VPC_ID."
+else
+    echo "Route tables found: $ROUTE_TABLES"
+fi
 
-    # If last invocation is earlier than three months ago, record the function
-    if [[ "$LAST_INVOCATION" < "$THREE_MONTHS_AGO" || -z "$LAST_INVOCATION" ]]; then
-        echo "$FUNCTION_NAME" >> "$OUTPUT_FILE"
-    fi
-done
+# Check Network ACL usage
+NETWORK_ACLS=$(aws ec2 describe-network-acls --filters "Name=vpc-id,Values=$VPC_ID" --profile "$AWS_PROFILE" --region "$AWS_REGION" --output json | jq -r '.NetworkAcls | length')
+if [ "$NETWORK_ACLS" -eq 0 ]; then
+    echo "No network ACLs found for VPC $VPC_ID."
+else
+    echo "Network ACLs found: $NETWORK_ACLS"
+fi
 
-echo "Inactive Lambda functions recorded in $OUTPUT_FILE"
+echo "Script execution completed."
