@@ -20,8 +20,10 @@ def lambda_handler(event, context):
     # Describe all snapshots in the region
     response = ec2.describe_snapshots(OwnerIds=['self'])
     
-    # Loop through each snapshot and delete if older than cutoff_date
+    # Initialize a list to store deleted snapshots
     deleted_snapshots = []
+    
+    # Loop through each snapshot and delete if older than cutoff_date
     for snapshot in response['Snapshots']:
         snapshot_date = snapshot['StartTime'].replace(tzinfo=None)
         if snapshot_date < cutoff_date:
@@ -31,3 +33,5 @@ def lambda_handler(event, context):
     
     # Print the IDs of the deleted snapshots
     print("Deleted Snapshots: {}".format(deleted_snapshots))
+
+    return "Lambda execution completed."
