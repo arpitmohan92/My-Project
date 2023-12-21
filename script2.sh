@@ -17,19 +17,22 @@ def lambda_handler(event, context):
     # Calculate the cutoff date for deletion
     cutoff_date = current_date - timedelta(days=retention_days)
     
-    # Describe all snapshots in the region
-    response = ec2.describe_snapshots(OwnerIds=['self'])
-    
     # Initialize a list to store deleted snapshots
     deleted_snapshots = []
     
-    # Loop through each snapshot and delete if older than cutoff_date
-    for snapshot in response['Snapshots']:
-        snapshot_date = snapshot['StartTime'].replace(tzinfo=None)
-        if snapshot_date < cutoff_date:
-            # Delete the snapshot
-            ec2.delete_snapshot(SnapshotId=snapshot['SnapshotId'])
-            deleted_snapshots.append(snapshot['SnapshotId'])
+    # Describe snapshots in smaller batches using pagination
+    paginator = ec2.get_paginator('describe_snapshots')
+    response_iterator = paginator.paginate(OwnerIds=['self'])
+    
+    # Loop through each page of snapshots
+    for page in response_iterator:
+        # Loop through each snapshot on the page
+        for snapshot in page['Snapshots']:
+            snapshot_date = snapshot['StartTime'].replace(tzinfo=None)
+            if snapshot_date < cutoff_date:
+                # Delete the snapshot
+                ec2.delete_snapshot(SnapshotId=snapshot['SnapshotId'])
+                deleted_snapshots.append(snapshot['SnapshotId'])
     
     # Print the IDs of the deleted snapshots
     print("Deleted Snapshots: {}".format(deleted_snapshots))
