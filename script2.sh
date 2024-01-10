@@ -1,28 +1,28 @@
 import boto3
 
 def lambda_handler(event, context):
-    securityhub = boto3.client('securityhub')
+    security_hub = boto3.client('securityhub')
 
-    # Extracting findings from the event
-    findings = event.get('detail', {}).get('findings', [])
+    # Define the alert title to suppress
+    alert_title_to_suppress = "Amazon S3 Block Public Access was disabled for S3 bucket crewmgmt-Afro-s3-Qa"
 
-    # List of severity levels to suppress (low and medium in this case)
-    severity_to_suppress = ['LOW', 'MEDIUM']
-
-    for finding in findings:
-        severity = finding.get('Severity', {}).get('Label', '').upper()
-
-        # Check if the severity level is in the list to suppress
-        if severity in severity_to_suppress:
-            # Suppress the finding
-            response = securityhub.batch_update_findings(
-                FindingIdentifiers=[{'Id': finding['Id'], 'ProductArn': finding['ProductArn']}],
-                Note={'Text': 'Alert suppressed by Lambda function', 'UpdatedBy': 'Lambda'},
-                Workflow={'Status': 'SUPPRESSED'}
+    # Iterate through findings in the event
+    for finding in event['detail']['findings']:
+        if 'Title' in finding['title'] and finding['title'] == alert_title_to_suppress:
+            # Suppress low alerts
+            security_hub.batch_update_findings(
+                FindingIdentifiers=[
+                    {
+                        'Id': finding['id'],
+                        'ProductArn': finding['productArn']
+                    },
+                ],
+                Workflow={
+                    'Status': 'SUPPRESSED'
+                }
             )
-            print(f"Suppressed finding {finding['Id']} with severity {severity}")
 
     return {
         'statusCode': 200,
-        'body': 'Alert suppression completed successfully.'
+        'body': 'Alert suppression complete.'
     }
