@@ -1,46 +1,33 @@
 import boto3
 
 def lambda_handler(event, context):
-    securityhub = boto3.client('securityhub')
+    security_hub = boto3.client('securityhub')
 
-    findings_to_suppress = securityhub.get_findings(
-        Filters={
-            'SeverityLabel': {
-                'Comparison': 'EQUALS',
-                'Value': 'LOW'
-            },
-            'ConfidenceLabel': {
-                'Comparison': 'EQUALS',
-                'Value': 'LOW'
-            },
-            'WorkflowState': {
-                'Comparison': 'NOT_EQUALS',
-                'Value': 'SUPPRESSED'
-            }
-        },
-        MaxResults=10
-    )['Findings']
+    # Specify the finding types you want to suppress (e.g., LOW)
+    finding_types_to_suppress = ['Low']
 
-    if findings_to_suppress:
-        suppressed_findings = []
+    # Specify the reason for suppression
+    suppression_reason = 'Suppressing low alerts for maintenance window.'
 
-        for finding in findings_to_suppress:
-            suppressed_findings.append({
-                'Id': finding['Id'],
-                'ProductArn': finding['ProductArn']
-            })
-
-        securityhub.batch_update_findings(
-            FindingIdentifiers=suppressed_findings,
-            Workflow='SUPPRESS'
+    for finding_type in finding_types_to_suppress:
+        response = security_hub.batch_update_findings(
+            FindingIdentifiers=[
+                {
+                    'Id': finding['Id'],
+                    'ProductArn': finding['ProductArn']
+                }
+                for finding in event['findings']
+                if finding['Severity']['Label'] == finding_type
+            ],
+            Workflow=[
+                {
+                    'Status': 'SUPPRESSED',
+                    'StatusReason': suppression_reason
+                }
+            ]
         )
 
-        return {
-            'statusCode': 200,
-            'body': 'Successfully suppressed findings.'
-        }
-    else:
-        return {
-            'statusCode': 200,
-            'body': 'No findings to suppress.'
-        }
+    return {
+        'statusCode': 200,
+        'body': 'Low alerts suppressed successfully.'
+    }
