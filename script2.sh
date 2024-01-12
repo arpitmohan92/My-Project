@@ -1,7 +1,8 @@
 import boto3
 
 def lambda_handler(event, context):
-    security_hub = boto3.client('securityhub')
+    # Specify the region where your Security Hub is located
+    security_hub = boto3.client('securityhub', region_name='your_region')
 
     findings = event.get('detail', {}).get('findings', [])
 
