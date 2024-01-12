@@ -1,34 +1,31 @@
 import boto3
-import logging
 
 def lambda_handler(event, context):
-    logging.getLogger().setLevel(logging.INFO)  # Enable logging
+    security_hub = boto3.client('securityhub')
 
-    try:
-        securityhub = boto3.client('securityhub')
+    findings = event.get('detail', {}).get('findings', [])
 
-        findings = event.get('detail', {}).get('findings')
-        if findings:
-            findingIds = [finding['Id'] for finding in findings]
-
-            securityhub.batch_update_findings(
-                FindingIdentifiers=findingIds,
-                Workflow={'Status': 'SUPPRESSED'}
+    for finding in findings:
+        severity = finding.get('Severity', {})
+        if severity.get('Label') == 'LOW':
+            # Suppress low severity findings
+            security_hub.batch_update_findings(
+                FindingIdentifiers=[
+                    {
+                        'Id': finding['Id'],
+                        'ProductArn': finding['ProductArn']
+                    },
+                ],
+                Note={
+                    'Text': 'Finding suppressed by Lambda function',
+                    'UpdatedBy': 'LambdaFunction'
+                },
+                Workflow={
+                    'Status': 'SUPPRESSED'
+                }
             )
 
-            return {
-                'statusCode': 200,
-                'body': 'Low-severity findings suppressed.'
-            }
-        else:
-            logging.warning("Event does not contain 'detail' or 'findings' keys")
-            return {
-                'statusCode': 400,
-                'body': 'Invalid event structure'
-            }
-    except Exception as e:
-        logging.error(f"Error suppressing findings: {e}")
-        return {
-            'statusCode': 500,
-            'body': 'Internal server error'
-        }
+    return {
+        'statusCode': 200,
+        'body': 'Low severity findings suppressed successfully.'
+    }
