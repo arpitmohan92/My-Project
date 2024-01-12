@@ -1,26 +1,34 @@
 import boto3
 
-def get_low_alerts():
-    # Set the AWS region
-    region = 'ap-southeast-2'
+def lambda_handler(event, context):
+    # Initialize Security Hub client
+    securityhub = boto3.client('securityhub')
 
-    # Create SecurityHub client
-    securityhub_client = boto3.client('securityhub', region_name=region)
+    # Specify the finding types and severity level to suppress
+    finding_types_to_suppress = ['Low']
+    
+    # Iterate through findings in the event
+    for finding in event['findings']:
+        # Check if the finding type and severity match the ones to suppress
+        if finding['Type'] in finding_types_to_suppress and finding['Severity']['Label'] == 'LOW':
+            # Suppress the finding
+            securityhub.batch_update_findings(
+                FindingIdentifiers=[
+                    {
+                        'Id': finding['Id'],
+                        'ProductArn': finding['ProductArn']
+                    },
+                ],
+                Note={
+                    'Text': 'Finding suppressed due to low severity.',
+                    'UpdatedBy': 'Lambda Function'
+                },
+                Workflow={
+                    'Status': 'SUPPRESSED'
+                }
+            )
 
-    # Get findings with low severity
-    response = securityhub_client.get_findings(
-        Filters=[
-            {
-                'Name': 'SeverityLabel',
-                'Values': ['LOW']
-            }
-        ]
-    )
-
-    # Extract and print findings
-    findings = response.get('Findings', [])
-    for finding in findings:
-        print(f"Title: {finding['Title']}, Severity: {finding['Severity']['Label']}")
-
-if __name__ == "__main__":
-    get_low_alerts()
+    return {
+        'statusCode': 200,
+        'body': 'Low severity alerts suppressed successfully.'
+    }
