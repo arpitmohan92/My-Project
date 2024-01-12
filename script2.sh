@@ -1,39 +1,21 @@
 import boto3
 
 def lambda_handler(event, context):
-    try:
-        findings = event['findings']
-    except KeyError:
-        return {
-            'statusCode': 400,
-            'body': 'Error: No findings key in the event payload.'
-        }
+    securityhub = boto3.client('securityhub')
 
-    security_hub = boto3.client('securityhub')
-
-    finding_types_to_suppress = ['Low']
-    suppression_reason = 'Suppressing low alerts for maintenance window.'
-
-    for finding in findings:
-        severity_label = finding.get('Severity', {}).get('Label', '')
-
-        if severity_label in finding_types_to_suppress:
-            response = security_hub.batch_update_findings(
-                FindingIdentifiers=[
-                    {
-                        'Id': finding['Id'],
-                        'ProductArn': finding['ProductArn']
-                    }
-                ],
-                Workflow=[
-                    {
-                        'Status': 'SUPPRESSED',
-                        'StatusReason': suppression_reason
-                    }
-                ]
-            )
+    for finding in event['detail']['findings']:
+        if finding['Severity']['Label'] == 'LOW':  # Filter for low severity findings
+            try:
+                response = securityhub.update_findings(
+                    Filters={'Id': [{'Value': finding['Id']}]},
+                    Note={'Text': 'Suppressed by Lambda function'},
+                    Workflow={'Status': 'SUPPRESSED'}
+                )
+                print(f"Suppressed finding: {finding['Id']}")
+            except Exception as e:
+                print(f"Error suppressing finding {finding['Id']}: {e}")
 
     return {
         'statusCode': 200,
-        'body': 'Low alerts suppressed successfully.'
+        'body': 'Suppression function executed successfully.'
     }
