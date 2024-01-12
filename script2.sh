@@ -1,8 +1,27 @@
-{
-  "errorMessage": "'detail'",
-  "errorType": "KeyError",
-  "requestId": "a4e701b4-dde4-4789-abcf-d1406d478679",
-  "stackTrace": [
-    "  File \"/var/task/lambda_function.py\", line 6, in lambda_handler\n    for finding in event['detail']['findings']:\n"
-  ]
-}
+import boto3
+
+def lambda_handler(event, context):
+    securityhub = boto3.client('securityhub')
+
+    # Filter for low-severity findings
+    findings = securityhub.get_findings(
+        Filters={
+            'SeverityLabel': [
+                'LOW'
+            ]
+        }
+    )['Findings']
+
+    if findings:
+        findingIds = [finding['Id'] for finding in findings]
+
+        # Suppress the findings
+        securityhub.batch_update_findings(
+            FindingIdentifiers=findingIds,
+            Workflow={'Status': 'SUPPRESSED'}
+        )
+
+    return {
+        'statusCode': 200,
+        'body': 'Low-severity findings suppressed.'
+    }
