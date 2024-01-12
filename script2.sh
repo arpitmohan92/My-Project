@@ -1,28 +1,26 @@
 import boto3
 
-def lambda_handler(event, context):
-    security_hub = boto3.client('securityhub')
+def get_low_alerts():
+    # Set the AWS region
+    region = 'ap-southeast-2'
 
-    # Define the alert title to suppress
-    alert_title_to_suppress = "Amazon S3 Block Public Access was disabled for S3 bucket crewmgmt-Afro-s3-Qa"
+    # Create SecurityHub client
+    securityhub_client = boto3.client('securityhub', region_name=region)
 
-    # Iterate through findings in the event
-    for finding in event['detail']['findings']:
-        if 'Title' in finding['title'] and finding['title'] == alert_title_to_suppress:
-            # Suppress low alerts
-            security_hub.batch_update_findings(
-                FindingIdentifiers=[
-                    {
-                        'Id': finding['id'],
-                        'ProductArn': finding['productArn']
-                    },
-                ],
-                Workflow={
-                    'Status': 'SUPPRESSED'
-                }
-            )
+    # Get findings with low severity
+    response = securityhub_client.get_findings(
+        Filters=[
+            {
+                'Name': 'SeverityLabel',
+                'Values': ['LOW']
+            }
+        ]
+    )
 
-    return {
-        'statusCode': 200,
-        'body': 'Alert suppression complete.'
-    }
+    # Extract and print findings
+    findings = response.get('Findings', [])
+    for finding in findings:
+        print(f"Title: {finding['Title']}, Severity: {finding['Severity']['Label']}")
+
+if __name__ == "__main__":
+    get_low_alerts()
