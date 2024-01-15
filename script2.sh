@@ -1,22 +1,22 @@
 #!/bin/bash
 
-# Replace 'your_region' with the actual AWS region where your Security Hub is deployed
-AWS_REGION="your_region"
+# Set your AWS region
+AWS_REGION="your-aws-region"
 
-# Get the product ARN for AWS Security Hub
-AWS_PRODUCT_ARN=$(aws securityhub describe-products --region $AWS_REGION --query 'Products[0].ProductArn' --output text)
+# Set the suppression reason
+SUPPRESSION_REASON="Suppressing low alerts for maintenance window."
 
-if [ -z "$AWS_PRODUCT_ARN" ]; then
-    echo "Error: Unable to retrieve AWS Security Hub product ARN."
-    exit 1
-fi
+# Get all low severity finding IDs
+LOW_FINDING_IDS=$(aws securityhub get-findings \
+  --region $AWS_REGION \
+  --filters "SeverityLabel=Low" \
+  --query 'Findings[*].[Id]' \
+  --output json)
 
-# Get the list of low severity findings
-LOW_FINDINGS=$(aws securityhub get-findings --region $AWS_REGION --severity-labels LOW --product-arn $AWS_PRODUCT_ARN --query 'Findings[].Id' --output text)
-
-# Suppress low severity findings
-for FINDING_ID in $LOW_FINDINGS; do
-    aws securityhub batch-update-findings --region $AWS_REGION --finding-identifiers Id=$FINDING_ID,ProductArn=$AWS_PRODUCT_ARN --note "Text=Finding suppressed by shell script",UpdatedBy="ShellScript" --workflow Status="SUPPRESSED"
+# Suppress each low severity finding
+for FINDING_ID in $(echo "${LOW_FINDING_IDS}" | jq -r '.[]'); do
+  aws securityhub batch-update-findings \
+    --region $AWS_REGION \
+    --finding-identifiers Id=$FINDING_ID \
+    --workflow Status=suppressed,StatusReason="$SUPPRESSION_REASON"
 done
-
-echo "Low severity findings suppressed successfully."
