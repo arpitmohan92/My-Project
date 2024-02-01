@@ -99,3 +99,14 @@ resource "aws_cloudwatch_event_target" "lambda_target" {
 
   arn = aws_lambda_function.snapshot_cleanup.arn
 }
+
+# Lambda Permission for EventBridge
+resource "aws_lambda_permission" "allow_eventbridge" {
+  statement_id  = "AllowExecutionFromCloudWatchEvents"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.snapshot_cleanup.function_name
+  principal     = "events.amazonaws.com"
+
+  source_arn = aws_cloudwatch_event_rule.daily_schedule_rule.arn
+}
+
