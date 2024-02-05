@@ -1,112 +1,32 @@
-# IAM Role
-resource "aws_iam_role" "lambda_execution_role" {
-  name = "lambda_execution_role"
+aws ssm create-document --name "YourDocumentName" --document-type "Command" --content file://path/to/your/script.json
 
-  assume_role_policy = <<EOF
+aws ssm send-command --document-name "YourDocumentName" --targets "Key=instanceids,Values=your-instance-id" --parameters commands="your-script-commands"
+
+
 {
-  "Version": "2012-10-17",
-  "Statement": [
+  "schemaVersion": "2.2",
+  "description": "Install Apache Tomcat on Linux",
+  "mainSteps": [
     {
-      "Action": "sts:AssumeRole",
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "lambda.amazonaws.com"
-      }
+      "action": "aws:runShellScript",
+      "name": "installTomcat",
+      "inputs": [
+        "#!/bin/bash",
+        "sudo yum update -y",
+        "sudo yum install -y java-1.8.0-openjdk",
+        "sudo groupadd tomcat",
+        "sudo useradd -M -s /bin/nologin -g tomcat -d /opt/tomcat tomcat",
+        "wget https://archive.apache.org/dist/tomcat/tomcat-9/v9.0.0.M1/bin/apache-tomcat-9.0.0.M1.tar.gz -P /tmp",
+        "sudo tar xf /tmp/apache-tomcat-9.0.0.M1.tar.gz -C /opt/tomcat",
+        "sudo ln -s /opt/tomcat/apache-tomcat-9.0.0.M1 /opt/tomcat/latest",
+        "sudo chown -R tomcat: /opt/tomcat/latest",
+        "sudo sh -c 'chmod +x /opt/tomcat/latest/bin/*.sh'",
+        "sudo sh -c 'chmod 755 /opt/tomcat/latest/conf'",
+        "sudo firewall-cmd --permanent --add-port=8080/tcp",
+        "sudo firewall-cmd --reload",
+        "sudo systemctl start tomcat",
+        "sudo systemctl enable tomcat"
+      ]
     }
   ]
 }
-EOF
-}
-
-# IAM Policy
-resource "aws_iam_policy" "lambda_execution_policy" {
-  name        = "lambda_execution_policy"
-  description = "Policy for Lambda execution role"
-
-  policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "logs:CreateLogGroup",
-        "logs:CreateLogStream",
-        "logs:PutLogEvents"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ec2:DescribeSnapshots",
-        "ec2:DescribeSnapshotAttribute",
-        "ec2:DescribeSnapshotTierStatus",
-        "ec2:DescribeImages",
-        "ec2:DeleteSnapshot"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
-EOF
-}
-
-# Attach Policy
-resource "aws_iam_role_policy_attachment" "lambda_execution_attachment" {
-  policy_arn = aws_iam_policy.lambda_execution_policy.arn
-  role       = aws_iam_role.lambda_execution_role.name
-}
-
-#Zip file
-#data "archive_file" "main" {
-#  type        = "zip"
-#  source_file = "./file/lambda_function.py"
-#  output_path = "EBS_Snapshot_Deletion.zip"
-#}
-
-# Lambda Function
-resource "aws_lambda_function" "snapshot_cleanup" {
-  function_name = "Ebs-snapshot-cleanup"
-  filename      = "EBS_Snapshot_Deletion.zip"
-#  source_code_hash = data.archive_file.main.output_base64sha256
-  runtime       = "python3.12"
-  handler       = "lambda_function.lambda_handler"
-  timeout       = 600
-  role = aws_iam_role.lambda_execution_role.arn
-}
-
-# EventBridge Rule
-resource "aws_cloudwatch_event_rule" "daily_schedule_rule" {
-  name                = "daily_schedule_rule"
-  description         = "Rule to trigger Lambda function daily"
-  schedule_expression = "cron(0 0 * * ? *)"  
-
-  event_pattern = <<EOF
-{
-  "source": ["aws.events"],
-  "detail": {
-    "eventName": ["SnapshotCleanupEvent"]
-  }
-}
-EOF
-}
-
-# EventBridge Rule Target to invoke Lambda function
-resource "aws_cloudwatch_event_target" "lambda_target" {
-  rule      = aws_cloudwatch_event_rule.daily_schedule_rule.name
-  target_id = "invoke_lambda_function"
-
-  arn = aws_lambda_function.snapshot_cleanup.arn
-}
-
-# Lambda Permission for EventBridge
-resource "aws_lambda_permission" "allow_eventbridge" {
-  statement_id  = "AllowExecutionFromCloudWatchEvents"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.snapshot_cleanup.function_name
-  principal     = "events.amazonaws.com"
-
-  source_arn = aws_cloudwatch_event_rule.daily_schedule_rule.arn
-}
-
