@@ -1,22 +1,8 @@
-import hudson.cli.CLIMethod
+def jenkins = Jenkins.getInstance()
+def plugin = jenkins.pluginManager.getPlugin("jenkins-cli")
 
-def cliEnabled = false
-
-try {
-  // Attempt to get an instance of the CLIMethod class
-  def cliMethod = CLIMethod.instance()
-  cliEnabled = true
-} catch (Exception e) {
-  println "Error: CLI might be disabled. Exception: ${e}"
-}
-
-if (cliEnabled) {
-  println "CLI is enabled."
+if (plugin != null && plugin.enabled) {
+  println "CLI plugin is enabled, suggesting CLI might be enabled."
 } else {
-  println "CLI is disabled."
-}
-able tomcat"
-      ]
-    }
-  ]
+  println "CLI plugin is either not installed or disabled, suggesting CLI might be disabled."
 }
