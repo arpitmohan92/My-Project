@@ -1,17 +1,13 @@
-import hudson.cli.CLIMethod
+import jenkins.model.Jenkins
 
-def cliEnabled = false
+def isCLIDisabled() {
+    // Get the Jenkins instance
+    def jenkins = Jenkins.instance
 
-try {
-  // Attempt to get an instance of the CLIMethod class
-  def cliMethod = CLIMethod.instance()
-  cliEnabled = true
-} catch (Exception e) {
-  println "Error: CLI might be disabled. Exception: ${e}"
+    // Check if the CLI is disabled
+    return jenkins.isCLIOffline()
 }
 
-if (cliEnabled) {
-  println "CLI is enabled."
-} else {
-  println "CLI is disabled."
-}
+// Example usage
+def cliDisabled = isCLIDisabled()
+println "Jenkins CLI is " + (cliDisabled ? "disabled" : "enabled")
