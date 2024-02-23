@@ -1,77 +1,155 @@
-resource "aws_workspaces_directory" "workspaces_directory" {
-  directory_id = var.directory
-  subnet_ids = [var.subnets[0],var.subnets[1]]
-  
 
-  self_service_permissions {
-    change_compute_type  = false
-    increase_volume_size = false
-    rebuild_workspace    = true
-    restart_workspace    = true
-    switch_running_mode  = false
-  }
+locals {
+  #IAM Roles
+  iam_roles_map_dev = {
+        cc-bayee-sns-push-notification-delivery-cw-log-role = {
+            role_name = "cc-bayee-sns-push-notification-delivery-cw-log-role"
+            role_description = "Role assumed for mobile push notification."
+            custom_role_policy_attachments = [
+                "cc-bayee-sns-push-notification-policy-dev",
+            ]
 
-  workspace_access_properties {
-    device_type_android    = "ALLOW"
-    device_type_chromeos   = "ALLOW"
-    device_type_ios        = "ALLOW"
-    device_type_linux      = "ALLOW"
-    device_type_osx        = "ALLOW"
-    device_type_web        = "ALLOW"
-    device_type_windows    = "ALLOW"
-    device_type_zeroclient = "DENY"
-  }
-
-  workspace_creation_properties {
-    custom_security_group_id            = aws_security_group.workspace_sg.id
-    default_ou                          = var.default_ou     #"OU=AWS WorkSpaces,OU=UAT,OU=Windows10 20H2,OU=EndUserDevices,DC=virginblue,DC=internal"
-    enable_internet_access              = true
-    enable_maintenance_mode             = true
-    user_enabled_as_local_administrator = true
-  }
-
-  depends_on = [
-    aws_iam_role_policy_attachment.workspaces_default_service_access,
-    aws_iam_role_policy_attachment.workspaces_default_self_service_access
-  ]
+             custom_trust_policy    = jsonencode(
+{
+	    "Version": "2012-10-17",
+	    "Statement": [
+		{
+			"Effect": "Allow",
+			"Principal": {
+				"Service": "sns.amazonaws.com"
+			},
+			"Action": "sts:AssumeRole"
+		}
+	]
 }
-
-data "aws_iam_policy_document" "workspaces_iam" {
-  statement {
-    actions = ["sts:AssumeRole"]
-
-    principals {
-      type        = "Service"
-      identifiers = ["workspaces.amazonaws.com"]
+)
+        },                       
     }
-  }
+    iam_roles_map_test = {}  
+    iam_roles_map      = merge(local.iam_roles_map_dev,local.iam_roles_map_test)  
+
+
+ iam_policies_map_dev = {
+        cc-bayee-sns-push-notification-policy = {
+            name = "cc-bayee-sns-push-notification-policy-dev"
+            path = "/"
+            description = "sns push notification policy"
+            policy = jsonencode(
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+                "logs:PutMetricFilter",
+                "logs:PutRetentionPolicy"
+            ],
+            "Resource": [
+                "*"
+            ]
+        }
+    ]
+}
+  )
+    }
+    }
+    iam_policies_map_test = {}
+    iam_policies_map      = merge(local.iam_policies_map_dev,local.iam_policies_map_test)
+
+  iam_roles_map_cloudwatch_dev = {
+       new-relic-cloudwatch-streaming-to-firehose-role= {
+            role_name = "cc-bayee-sns-subs-kinesis-role"
+            role_description = "Role assumed for kinesis stream association"
+            custom_role_policy_attachments = [
+                "new-relic-cloudwatch-streaming-to-firehose",
+            ]
+
+ assume_role_policy = jsonencode(
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "streams.metrics.cloudwatch.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole",
+            "Condition": {
+                "StringEquals": {
+                    "sts:ExternalId": "185345276083"
+                }
+            }
+        },
+        {
+            "Sid": "Statement1",
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "logs.ap-southeast-2.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole",
+            "Condition": {
+                "StringEquals": {
+                    "sts:ExternalId": "185345276083"
+                }
+            }
+        }
+    ]
+}
+)
+        },                       
+    }
+    iam_roles_map_cloudwatch_test = {}  
+    iam_roles_map_cloudwatch      = merge(local.iam_roles_map_cloudwatch_dev,local.iam_roles_map_cloudwatch_test) 
+
+iam_policies_map_cloudwatch-dev = {
+        new-relic-cloudwatch-policy = {
+            name = "new-relic-cloudwatch-streaming-to-firehose"
+            path = "/"
+            description = "cloudwatch streaming policy"
+              policy = jsonencode(
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": [
+                "firehose:PutRecord",
+                "firehose:PutRecordBatch"
+            ],
+            "Effect": "Allow",
+            "Resource": "arn:aws:firehose:ap-southeast-2:185345276083:deliverystream/*",
+            "Sid": "VisualEditor0"
+        }
+    ]
+}
+  )
+    }
+    }
+    iam_policies_map_cloudwatch-test = {}
+    iam_policies_map_cloudwatch       = merge(local.iam_policies_map_cloudwatch-dev,local.iam_policies_map_cloudwatch-test)
+
+
+ log_group_map_dev=  {
+    log_group_map={
+    name              = "sns/ap-southeast-2/185345276083/app/GCM/va_app_android"
+    retention_in_days = 120
 }
 
-resource "aws_iam_role" "workspaces_iam_role" {
-  name               = "workspaces_DefaultRole"
-  assume_role_policy = data.aws_iam_policy_document.workspaces_iam.json
+ }
+  log_group_map_test=  {}
+
+    log_group_map_cloudwatch = merge(local.log_group_map_dev,local.log_group_map_test)
+
+cloudwatch_logs_map_subscription_dev = {
+    cloudwatch_logs_subscription_dev= {
+  name = "va_app_android-filter"
+}
+}
+cloudwatch_logs_map_subscription_test = {}
+cloudwatch_logs_map_subscription = merge (local.cloudwatch_logs_map_subscription_dev,local.cloudwatch_logs_map_subscription_test)
+
 }
 
-resource "aws_iam_role_policy_attachment" "workspaces_default_service_access" {
-  role       = aws_iam_role.workspaces_iam_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonWorkSpacesServiceAccess"
-}
 
-resource "aws_iam_role_policy_attachment" "workspaces_default_self_service_access" {
-  role       = aws_iam_role.workspaces_iam_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonWorkSpacesSelfServiceAccess"
-}
-
-resource "aws_security_group" "workspace_sg" {
-  name        = "aws-workspaces"
-  description = "Allow outbound traffic from aws workspace"
-  vpc_id      = var.vpc
-
-  egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
-  }
-}
