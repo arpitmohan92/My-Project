@@ -1,57 +1,22 @@
-# Creates a standard S3 bucket
-resource "aws_s3_bucket" "bucket" {
-    bucket      = var.bucket_name
-    tags        = var.tags
-}
+# Configure the S3 module
+module "s3_bucket" {
+  source  = "hashicorp/aws"
+  version = ">= 3.7"
 
-resource "aws_s3_bucket_ownership_controls" "acl_disabled" {
-    count  = var.disable_acl ? 1 : 0
-    bucket = aws_s3_bucket.bucket.id
-    rule {
-        object_ownership = "BucketOwnerEnforced"
-    }
-}
+  bucket = var.bucket_name
+  tags    = var.tags
 
-resource "aws_s3_bucket_ownership_controls" "acl_enabled" {
-    count  = var.disable_acl ? 0 : 1
-    bucket = aws_s3_bucket.bucket.id
-    rule {
-        object_ownership = "BucketOwnerPreferred"
-    }
-}
+  # Optional configurations
+  acl_disabled          = var.disable_acl          # Disables object ownership for the bucket
+  enable_versioning      = var.enable_versioning      # Enables versioning for the bucket
+  server_side_encryption = var.server_side_encryption # Enables server-side encryption with AES256
+  lifecycle_rule        = var.lifecycle_rule        # Defines a lifecycle rule for object expiration
 
-resource "aws_s3_bucket_versioning" "bucket" {
-    count  = var.enable_versioning ? 1 : 0
-    bucket = aws_s3_bucket.bucket.id
-    versioning_configuration {
-        status = "Enabled"
-    }
-}
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "bucket" {
-    bucket = aws_s3_bucket.bucket.id
-    rule {
-        apply_server_side_encryption_by_default {
-        sse_algorithm     = "AES256"
-        }
-    }
-}
-
-resource "aws_s3_bucket_public_access_block" "bucket" {
-    bucket                  = aws_s3_bucket.bucket.id
+  # Pass through configurations (if using the module)
+  public_access_block {
     restrict_public_buckets = true
-    block_public_policy     = true
-    block_public_acls       = true
-    ignore_public_acls      = true
-}
-
-resource "aws_s3_bucket_lifecycle_configuration" "lifecycle_rule" {
-  bucket      = aws_s3_bucket.bucket.id
-  rule {
-    id     = var.lifecycle_rule_name
-    status = "Enabled"
-    expiration {
-      days = var.lifecycle_object_expire_days
-    }
+    block_public_policy    = true
+    block_public_acls      = true
+    ignore_public_acls     = true
   }
 }
